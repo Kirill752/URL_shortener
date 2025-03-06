@@ -1,0 +1,8 @@
+# Окружение, запускающее проект
+env: "local" # local, dev, prod
+# Путь до базы данных
+storage_path: "../../storage/storage.db"
+http_server:
+  address: "localhost:8082"
+  timeout: 4s # Время на чтение запроса и время на отправку ответа
+  idle_timeout: 60s # Время жизни соединения
