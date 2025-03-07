@@ -1,14 +1,21 @@
 package save
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 	"urlShotener/internal/lib/api/response"
 	"urlShotener/internal/lib/logger/sl"
+	"urlShotener/internal/lib/random"
+	"urlShotener/internal/storage"
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
+	"github.com/go-playground/validator/v10"
 )
+
+// TODO: move to config
+const aliasLength = 4
 
 // Запросы поступают в виде json, который парсится в структуру Request
 type Request struct {
@@ -38,5 +45,35 @@ func New(log *slog.Logger, urlSaver URLSaver) http.HandlerFunc {
 			return
 		}
 		log.Info("request body decoded", slog.Any("request", req))
+
+		// Валидация структуры
+		if err := validator.New().Struct(req); err != nil {
+			validateErr := err.(validator.ValidationErrors)
+			log.Error("invalid request", sl.Err(err))
+			render.JSON(w, r, response.ValidationError(validateErr))
+			return
+		}
+
+		// Если alias пустой, то генерируем его из случайных символов
+		// FIXME: обработать ситуацию, когда сгенерированный alias уже встречался в таблице
+		alias := req.Alias
+		if alias == "" {
+			alias = random.CreateRandomString(aliasLength)
+		}
+
+		id, err := urlSaver.SaveURL(req.URL, alias)
+		if errors.Is(err, storage.ErrURLExists) {
+			log.Info("url already exists", slog.String("url", req.URL))
+			render.JSON(w, r, response.Error("url already exists"))
+			return
+		}
+		log.Info("url added", slog.Int64("id", id))
+		responseOk(w, r, alias)
 	}
+}
+func responseOk(w http.ResponseWriter, r *http.Request, alias string) {
+	render.JSON(w, r, Response{
+		Response: response.OK(),
+		Alias:    alias,
+	})
 }
