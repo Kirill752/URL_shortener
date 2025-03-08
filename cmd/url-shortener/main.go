@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"os"
 	"urlShotener/internal/config"
+	"urlShotener/internal/http-server/handlers/url/del"
+	"urlShotener/internal/http-server/handlers/url/redirect"
 	"urlShotener/internal/http-server/handlers/url/save"
 	"urlShotener/internal/http-server/middleware/logger"
 	"urlShotener/internal/lib/logger/sl"
@@ -20,8 +22,12 @@ const (
 	envProd  = "prod"
 )
 
-// Пример запроса
-// curl -X POST -H "Content-Type: application/json" -d '{"url":"https://vk.com", "alias":"vk"}' http://localhost:8082/url
+// Примеры запросов:
+// Добавление в баззу данных
+// curl -X POST -H "Content-Type: application/json" -d '{"url":"https://yandex.ru", "alias":"yandex"}' -u admin:12345  http://localhost:8082/url/save
+// curl -X POST -H "Content-Type: application/json" -d '{"url":"https://vk.com", "alias":"vk"}' -u admin:12345 http://localhost:8082/url/save
+// Удаление из базы данных
+// curl -X POST -H "Content-Type: application/json" -d '{"alias":"vk"}' -u admin:12345 http://localhost:8082/url/delete
 func main() {
 	// CONFIG_PATH=../../config/local.yaml go run main.go
 	cfg := config.MustLoad()
@@ -49,7 +55,14 @@ func main() {
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
 
-	router.Post("/url", save.New(log, storage))
+	router.Route("/url", func(r chi.Router) {
+		r.Use(middleware.BasicAuth("url-shortener", map[string]string{
+			cfg.HTTPServer.User: cfg.HTTPServer.Password,
+		}))
+		r.Post("/save", save.New(log, storage))
+		r.Post("/delete", del.New(log, storage))
+	})
+	router.Get("/{alias}", redirect.New(log, storage))
 
 	log.Info("starting server", slog.String("address", cfg.Address))
 
@@ -64,7 +77,6 @@ func main() {
 		log.Error("failed to start server")
 	}
 	log.Error("server error")
-	// TODO: run server
 }
 
 func setupLogger(env string) *slog.Logger {

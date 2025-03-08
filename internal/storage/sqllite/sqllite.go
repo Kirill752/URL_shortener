@@ -75,4 +75,19 @@ func (s *Storage) GetURL(alias string) (string, error) {
 	return recieved, nil
 }
 
-// TODO: func (s *Storage) DeleteURL(alias string) (string, error) {
+func (s *Storage) DeleteURL(alias string) (int64, error) {
+	const op = "storage.sqllite.DeleteURL"
+	stmt, err := s.db.Prepare(`DELETE FROM url WHERE alias = ?`)
+	if err != nil {
+		return 0, fmt.Errorf("%s error Prepare: %w", op, err)
+	}
+	res, err := stmt.Exec(alias)
+	if err != nil {
+		return 0, fmt.Errorf("%s error Execute: %w", op, err)
+	}
+	rowsCount, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get affected rows", op, err)
+	}
+	return rowsCount, nil
+}

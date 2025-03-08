@@ -1,42 +1,35 @@
-package save
+package del
 
 import (
-	"errors"
 	"log/slog"
 	"net/http"
 	"urlShotener/internal/lib/api/response"
 	"urlShotener/internal/lib/logger/sl"
-	"urlShotener/internal/lib/random"
-	"urlShotener/internal/storage"
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/render"
 	"github.com/go-playground/validator/v10"
 )
 
-// TODO: может быть перенести в config
-const aliasLength = 4
-
 // Запросы поступают в виде json, который парсится в структуру Request
 type Request struct {
-	URL   string `json:"url" validate:"required,url"`
-	Alias string `json:"alias,omitempty"`
+	Alias string `json:"alias"`
 }
 
 // Ответ сервера
 type Response struct {
 	response.Response
-	Alias string `json:"alias,omitempty"`
+	Alias string `json:"alias" validate:"required,alias"`
 }
 
-//go:generate go run github.com/vektra/mockery/v2@latest --name=URLSaver
-type URLSaver interface {
-	SaveURL(urlToSave string, alias string) (int64, error)
+//go:generate go run github.com/vektra/mockery/v2@latest --name=URLDeleter
+type URLDeleter interface {
+	DeleteURL(alias string) (int64, error)
 }
 
-func New(log *slog.Logger, urlSaver URLSaver) http.HandlerFunc {
+func New(log *slog.Logger, urlDeleter URLDeleter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.url.save.New"
+		const op = "handlers.url.delete.New"
 
 		// Добавление параметров в логи
 		log = log.With(slog.String("op", op),
@@ -44,10 +37,11 @@ func New(log *slog.Logger, urlSaver URLSaver) http.HandlerFunc {
 
 		// Парсинг запроса в JSON в структуру
 		var req Request
+		// err := render.DecodeForm(r.Body, &req)
 		err := render.DecodeJSON(r.Body, &req)
 		if err != nil {
 			log.Error("failed to decode request body", sl.Err(err))
-			render.JSON(w, r, response.Error("failed to request"))
+			render.JSON(w, r, response.Error("failed to decode request body"))
 			return
 		}
 		log.Info("request body decoded", slog.Any("request", req))
@@ -59,27 +53,15 @@ func New(log *slog.Logger, urlSaver URLSaver) http.HandlerFunc {
 			render.JSON(w, r, response.ValidationError(validateErr))
 			return
 		}
-
-		// Если alias пустой, то генерируем его из случайных символов
-		// FIXME: обработать ситуацию, когда сгенерированный alias уже встречался в таблице
 		alias := req.Alias
-		if alias == "" {
-			alias = random.CreateRandomString(aliasLength)
-		}
-
-		// Сохранение URL в базе данных
-		id, err := urlSaver.SaveURL(req.URL, alias)
-		if errors.Is(err, storage.ErrURLExists) {
-			log.Info("url already exists", slog.String("url", req.URL))
-			render.JSON(w, r, response.Error("url already exists"))
-			return
-		}
+		// Удаление URL из базы данных
+		cnt, err := urlDeleter.DeleteURL(alias)
 		if err != nil {
-			log.Error("failed to add url", sl.Err(err))
-			render.JSON(w, r, response.Error("failed to add url"))
+			log.Error("failed to delete url", sl.Err(err))
+			render.JSON(w, r, response.Error("failed to delete url"))
 			return
 		}
-		log.Info("url added", slog.Int64("id", id))
+		log.Info("url deleted", slog.Int64("number of affected url's", cnt))
 		// Ответ пользователю
 		responseOk(w, r, alias)
 	}
