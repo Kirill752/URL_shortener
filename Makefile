@@ -12,6 +12,6 @@ go_to:
 add:
 	curl -X POST -H "Content-Type: application/json" -d '{"url":"$(URL)", "alias":"$(ALIAS)"}' -u admin:12345  $(SERVER_PATH)/url/save
 delete:
-	curl -X POST -H "Content-Type: application/json" -d '{"alias":"($ALIAS)"}' -u admin:12345 $(SERVER_PATH)/url/deleteps
+	curl -X DELETE -H "Content-Type: application/json" -d '{"alias":"$(ALIAS)"}' -u admin:12345 $(SERVER_PATH)/url/delete
 kill:
 	killall go; killall main

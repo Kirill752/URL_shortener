@@ -22,6 +22,9 @@ const (
 	envProd  = "prod"
 )
 
+// Пример запуска:
+// CONFIG_PATH=../../config/local.yaml go run main.go
+
 // Примеры запросов:
 // Добавление в баззу данных
 // curl -X POST -H "Content-Type: application/json" -d '{"url":"https://yandex.ru", "alias":"yandex"}' -u admin:12345  http://localhost:8082/url/save
@@ -29,7 +32,6 @@ const (
 // Удаление из базы данных
 // curl -X POST -H "Content-Type: application/json" -d '{"alias":"vk"}' -u admin:12345 http://localhost:8082/url/delete
 func main() {
-	// CONFIG_PATH=../../config/local.yaml go run main.go
 	cfg := config.MustLoad()
 
 	log := setupLogger(cfg.Env)
@@ -42,8 +44,6 @@ func main() {
 		os.Exit(1)
 	}
 	router := chi.NewRouter()
-	// middleware - это хэндлеры, которые выполняются при запуске основного хэндлера
-	// Пример: если запрос модифицирующий, то помимо него нужно запустить хэндлер проверки авторизации
 	// Каждому запросу будет присвоен уникальный ID
 	router.Use(middleware.RequestID)
 	// Получает IP подключенного клиента
@@ -61,7 +61,6 @@ func main() {
 		}))
 		r.Post("/save", save.New(log, storage))
 		r.Delete("/delete", del.New(log, storage))
-		// r.Post("/delete", del.New(log, storage))
 	})
 	router.Get("/{alias}", redirect.New(log, storage))
 
