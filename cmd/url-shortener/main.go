@@ -60,7 +60,8 @@ func main() {
 			cfg.HTTPServer.User: cfg.HTTPServer.Password,
 		}))
 		r.Post("/save", save.New(log, storage))
-		r.Post("/delete", del.New(log, storage))
+		r.Delete("/delete", del.New(log, storage))
+		// r.Post("/delete", del.New(log, storage))
 	})
 	router.Get("/{alias}", redirect.New(log, storage))
 
