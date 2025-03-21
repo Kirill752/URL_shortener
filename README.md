@@ -86,11 +86,6 @@ make delete ALIAS=[your alias]
 - [Testify](https://pkg.go.dev/github.com/stretchr/testify) - тестирование
 - [Cleanenv](https://pkg.go.dev/github.com/ilyakaznacheev/cleanenv) - конфигурирование
 
-## ✍️ Автор <a name = "authors"></a>
-
-- [@Kirill752](https://github.com/Kirill752) - Создатель сервиса
-
-
 ## Благодарности <a name = "acknowledgement"></a>
 
 - При создании данного сервиса мне очень сильно помогла [данная статья](https://habr.com/ru/companies/selectel/articles/747738/).
